@@ -1,0 +1,22 @@
+# Build artifacts
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+build/
+
+# IDE files
+.vscode/
+.idea/
+*.launch
+
+# Data analysis
+analysis/data/*.csv
+analysis/data/*.log
+__pycache__/
+*.pyc
+
+# OS generated files
+.DS_Store
+Thumbs.db
