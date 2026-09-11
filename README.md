@@ -27,24 +27,24 @@ Safety is implemented through an independent hardware E-stop path, a firmware sa
 ```mermaid
 graph TD
     subgraph Hardware_Safety_Path ["Hardware Safety Path"]
-        ESTOP["Hardware E-Stop Button<br/>(DPST NC Contacts on R_EN)"] -->|Interrupt Line| ISR["PC13 EXTI ISR"]
+        ESTOP["Hardware E-Stop Button<br/>DPST NC Contacts on R_EN"] -->|Interrupt Line| ISR["PC13 EXTI ISR"]
         ESTOP -->|Direct Power Cut| DRIVER["BTS7960 Motor Driver"]
         ISR -->|Hardware Disable| SAFETY["Safety Supervisor Layer"]
     end
 
     subgraph Control_Loop ["100 Hz Deterministic Control Loop"]
-        TARGET["Target Speed (RPM)"] --> PI["Discrete PI Controller<br/>(Kp=0.5, Ki=15.0)"]
+        TARGET["Target Speed RPM"] --> PI["Discrete PI Controller<br/>Kp=0.5, Ki=15.0"]
         PI -->|Raw Duty Command| SAFETY
-        SAFETY -->|Clamped Duty (0-100%)| DRIVER
-        DRIVER -->|20 kHz PWM (PA8)| MOTOR["JGA25-370 12V DC Gear Motor"]
-        MOTOR -->|Mechanical Shaft Rotation| ENC["Hall Quadrature Encoder<br/>(1496 counts/rev)"]
+        SAFETY -->|Clamped Duty 0-100%| DRIVER
+        DRIVER -->|20 kHz PWM PA8| MOTOR["JGA25-370 12V DC Gear Motor"]
+        MOTOR -->|Mechanical Shaft Rotation| ENC["Hall Quadrature Encoder<br/>1496 counts/rev"]
         ENC -->|PA0/PA1 TIM2 Ticks| ESTIMATOR["3-Sample Moving Average<br/>Speed Estimator"]
-        ESTIMATOR -->|Filtered Speed (RPM)| PI
+        ESTIMATOR -->|Filtered Speed RPM| PI
     end
 
     subgraph Current_Monitoring ["Current Protection Path"]
-        SHUNT["0.1 Ω Shunt / INA169"] -->|Analog Voltage| ADC["ADC2_IN17 (PA4)"]
-        ADC -->|Current (A)| CURRENT["Current Monitor"]
+        SHUNT["0.1 Ω Shunt / INA169"] -->|Analog Voltage| ADC["ADC2_IN17 PA4"]
+        ADC -->|Current Amps| CURRENT["Current Monitor"]
         CURRENT -->|1.80 A Over-Current Trip| SAFETY
     end
 
