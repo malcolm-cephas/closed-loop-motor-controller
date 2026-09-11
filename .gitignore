@@ -4,6 +4,7 @@
 *.bin
 *.hex
 *.map
+*.exe
 build/
 
 # IDE files
@@ -11,12 +12,12 @@ build/
 .idea/
 *.launch
 
-# Data analysis
-analysis/data/*.csv
-analysis/data/*.log
+# Python bytecode
 __pycache__/
+**/__pycache__/
 *.pyc
 
 # OS generated files
 .DS_Store
 Thumbs.db
+

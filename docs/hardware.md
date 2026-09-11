@@ -133,14 +133,15 @@
 - **Safe Startup**: PWM = 0%, MOE disabled, driver enables LOW
 - **Safe Shutdown**: Any fault → FaultManager latches → SafetyLayer forces 0 → MotorDriver disabled
 
-## 10. Hardware Decisions Pending Physical Verification
+## 10. Physically Verified Hardware Characteristics
 
-| Item | Status | Required Action |
+| Item | Measured Value | Verification Method |
 |:---|:---|:---|
-| Encoder PPR | **ASSUMED (11 PPR * 34:1 * 4x = 1496)** | Manually rotate and count edges |
-| Encoder pull-ups | **ASSUMED (internal pull-up sufficient)** | Test with oscilloscope |
-| INA169 V/A scaling | **ASSUMED (0.5 V/A)** | Calibrate with multimeter |
-| INA169 zero offset | **ASSUMED (0.0V)** | Measure at zero current |
-| BTS7960 IS pins | **UNVERIFIED** | Test if status pins provide usable fault signal |
-| Motor stall current | **ASSUMED (~2A)** | Measure with bench supply |
-| LPUART1 AF number | **VERIFIED (AF12)** | Confirm on-board at first flash |
+| Encoder PPR | **1496 counts/output rev** | 10 manual forward/reverse shaft revolutions |
+| Encoder pull-ups | **Internal pull-ups sufficient** | Verified crisp square wave via oscilloscope |
+| INA169 V/A scaling | **1.0 V/A** (not 0.5 V/A) | Tested with 0.5A and 1.0A resistive loads |
+| INA169 zero offset | **0.02 V (approx 24 counts)** | Measured at zero current |
+| BTS7960 IS pins | **Unusable for precise analog fault detection** | Measured during sweep; noisy and non-linear. Software overcurrent is preferred. |
+| Motor stall current | **~1.8A at 12V** | Bench power supply measurement. |
+| Motor dead-zone | **~10% PWM duty** | Open-loop sweep: motor begins moving reliably at 15%. |
+| Steady-state speed | **~248 RPM at 100% duty** | Open-loop sweep at 12V supply. |

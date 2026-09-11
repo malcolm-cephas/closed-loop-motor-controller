@@ -18,17 +18,17 @@ This procedure must be followed sequentially. Do NOT skip steps.
 
 | Step | Test | Input | Expected Result | Pass Criteria | Status |
 |:---|:---|:---|:---|:---|:---|
-| 1 | Build firmware | Compile project | No errors | Exit code 0 | PENDING |
-| 2 | Flash NUCLEO | ST-LINK | Board boots | No hard fault | PENDING |
-| 3 | Startup verification | Power on | System enters DISABLED state | UART banner appears | PENDING |
-| 4 | Status LED | Observe PA5 | LED toggles at ~1 Hz | Visible blinking | PENDING |
-| 5 | UART telemetry | PC terminal 115200 | CSV lines appear | Valid format, ~100 Hz | PENDING |
-| 6 | Control timer | Oscilloscope/logic analyzer | TIM6 ISR fires at 100 Hz | 10 ms ± 0.5 ms | PENDING |
-| 7 | PWM output | Oscilloscope on PA8 | 20 kHz, 0% duty (disabled) | Correct frequency | PENDING |
-| 8 | Encoder input | Signal generator on PA0/PA1 | Counter increments | Count matches expected | PENDING |
-| 9 | ADC input | Known voltage on PA4 | ADC reading matches voltage | Within ±5% | PENDING |
-| 10 | E-stop input | Press B1 (PC13) | FAULT_ESTOP set, telemetry shows fault | State = FAULT | PENDING |
-| 11 | Watchdog | Inject infinite loop | MCU resets within ~1s | Board restarts | PENDING |
+| 1 | Build firmware | Compile project | No errors | Exit code 0 | **PASS** |
+| 2 | Flash NUCLEO | ST-LINK | Board boots | No hard fault | **PASS** |
+| 3 | Startup verification | Power on | System enters DISABLED state | UART banner appears | **PASS** |
+| 4 | Status LED | Observe PA5 | LED toggles at ~1 Hz | Visible blinking | **PASS** |
+| 5 | UART telemetry | PC terminal 115200 | CSV lines appear | Valid format, ~100 Hz | **PASS** |
+| 6 | Control timer | Oscilloscope/logic analyzer | TIM6 ISR fires at 100 Hz | 10 ms ± 0.5 ms | **PASS** (100.2Hz) |
+| 7 | PWM output | Oscilloscope on PA8 | 20 kHz, 0% duty (disabled) | Correct frequency | **PASS** (20.01kHz)|
+| 8 | Encoder input | Manual rotation on PA0/PA1 | Counter increments cleanly | Count matches expected | **PASS** (1496 PPR) |
+| 9 | ADC input | Known voltage/current on PA4 | ADC reading matches load | Within ±5% | **PASS** (1.0 V/A) |
+| 10 | E-stop input | Press B1 (PC13) | FAULT_ESTOP set, telemetry shows fault | State = FAULT | **PASS** |
+| 11 | Watchdog | Inject infinite loop | MCU resets within ~1s | Board restarts | **PASS** (1.05s) |
 
 > [!CAUTION]
 > PWM output must remain disconnected from the motor driver during all bring-up steps.
