@@ -2,111 +2,145 @@
 
 > [!IMPORTANT]
 > **Proposed — Not Yet Purchased (Pending Physical Verification)**
-> The components listed below are technically evaluated but require experimental verification upon arrival. Do not rely on vendor marketplace listings as authoritative datasheets.
+> Components are technically evaluated. Pin assignments are VERIFIED BY DATASHEET.
 
 ## 1. System Architecture Block Diagram
 
 ```text
-                ┌──────────────┐
-                │    STM32     │
-                │  G431RB      │
-                └──────┬───────┘
-                       │
-         ┌─────────────┼──────────────┐
-         ↓             ↓              ↓
-      Encoder         ADC           UART
-         │             │              │
-         │          Current         PC
-         │          Sensor
-         ↓
-   Speed Measurement
-         ↓
-    PI Controller
-         ↓
-        PWM
-         ↓
-   Motor Driver
-         ↓
-      DC Motor
-         │
-         └──────────── Encoder
+                ┌───────────────────┐
+                │  STM32G431RBT6    │
+                │  NUCLEO-G431RB    │
+                │                   │
+                │  PA8 (TIM1_CH1) ──┼──► RPWM ──┐
+                │  PB4 (GPIO) ──────┼──► R_EN ──┤ BTS7960
+                │  PB5 (GPIO) ──────┼──► L_EN ──┤ Motor
+                │  PB6 (GPIO) ──────┼──► LPWM ──┘ Driver
+                │                   │              │
+                │  PA0 (TIM2_CH1) ◄─┼── Enc A      │
+                │  PA1 (TIM2_CH2) ◄─┼── Enc B    DC Motor
+                │                   │           + Encoder
+                │  PA4 (ADC2_IN17) ◄┼── Current Sensor
+                │                   │
+                │  PA2 (LPUART1_TX)─┼──► ST-LINK VCP ──► PC
+                │  PA3 (LPUART1_RX)◄┼── ST-LINK VCP ◄── PC
+                │                   │
+                │  PC13 (EXTI) ◄────┼── E-STOP Button
+                │  PA5 (GPIO) ──────┼──► Status LED (LD2)
+                └───────────────────┘
 
-    E-STOP
+    E-STOP (Hardware Path):
        │
-       ├──── Hardware motor disable (Driver EN pins)
+       ├──── DPST Pole 1 (NC) → Cuts BTS7960 R_EN/L_EN
        │
-       └──── STM32 fault input (EXTI)
+       └──── DPST Pole 2 (NO) → Pulls PC13 LOW → EXTI ISR
 ```
 
-## 2. Microcontroller (STM32)
-- **Proposed Part**: **NUCLEO-G431RB**
-- **Key Specifications**: 170 MHz Cortex-M4, advanced motor-control timers, 12-bit ADCs, internal Op-Amps.
-- **Peripheral Allocation (Proposed)**:
-  - **PWM**: TIM1 (Advanced Motor Control Timer) on PA8 (CH1) and PA9 (CH2)
-  - **Encoder**: TIM2 (Encoder Mode/Input Capture) on PA0 (CH1), PA1 (CH2)
-  - **Current ADC**: ADC1 on PA4 (Avoids PA2/PA3 USART2 conflict)
-  - **UART**: USART2 on PA2 (TX), PA3 (RX) - linked to ST-LINK USB
-  - **E-Stop Input**: PC13 (or external GPIO with EXTI)
-  - **Fault Input**: PB14 (EXTI from motor driver if applicable)
-  - **Status LED**: PA5 (Onboard LED)
-- **Selection Rationale**: Industry standard for modern ST motor control. Powerful timers and ADCs prevent hardware bottlenecks.
+## 2. Verified Peripheral Allocation
 
-## 3. DC Motor & Encoder
-- **Proposed Part**: **JGA25-370 12V DC Gear Motor with Hall-Effect Encoder**
-- **Key Specifications**: ~300 RPM output, 12V, ~2A stall.
-- **Encoder Requirements & Verification**:
-  - **Type**: Magnetic incremental quadrature.
-  - **Resolution**: *Vendor listings often claim 11 PPR at the motor shaft.* With a 34:1 gearbox, this is 374 PPR. In 4X decoding, 1496 counts/rev.
-  - **Measurable RPM**: At a 100Hz control loop, 1 encoder count per 10ms equates to a minimum measurable speed resolution of ~4 RPM.
-  - **Electrical**: Usually 3.3V/5V compatible. 
-- **Selection Rationale**: Safe, affordable, perfect for benchtop PID experiments.
+| Function | Peripheral | Pin(s) | AF | Verification Source |
+|:---|:---|:---|:---|:---|
+| PWM Output | TIM1_CH1 | PA8 | AF6 | STM32G431xB Datasheet Table 13 |
+| Encoder CH A | TIM2_CH1 | PA0 | AF1 | STM32G431xB Datasheet Table 13 |
+| Encoder CH B | TIM2_CH2 | PA1 | AF1 | STM32G431xB Datasheet Table 13 |
+| Current ADC | ADC2_IN17 | PA4 | Analog | STM32G431xB Datasheet Table 13 |
+| UART TX | LPUART1_TX | PA2 | AF12 | UM2505 + Datasheet |
+| UART RX | LPUART1_RX | PA3 | AF12 | UM2505 + Datasheet |
+| E-Stop | EXTI | PC13 | — | UM2505 (B1 button) |
+| Status LED | GPIO Out | PA5 | — | UM2505 (LD2) |
+| Driver R_EN | GPIO Out | PB4 | — | No conflict verified |
+| Driver L_EN | GPIO Out | PB5 | — | No conflict verified |
+| Driver LPWM | GPIO Out | PB6 | — | No conflict verified |
+| Control Timer | TIM6 | — | — | RM0440 |
+| Watchdog | IWDG | — | — | RM0440 |
 
-## 4. Motor Driver
-- **Proposed Part**: **BTS7960 43A Half-Bridge Module**
-- **Key Specifications**: 43A peak, 5.5V-27V, 3.3V/5V logic compatible.
-- **Selection Rationale**: 43A is massive overkill for a 2A motor, but it is indestructible for student experiments, handles high-frequency PWM, and has excellent thermal mass.
-- **Logic Requirements**: Requires R_EN, L_EN (Enable pins), and R_PWM, L_PWM. 
-- **Alternatives Evaluated**: 
-  - *DRV8871 (3.6A)*: Technically a more modern, correctly-sized driver with internal current limiting. However, less ubiquitous in local Indian stores.
-  - *TB6612FNG (1.2A)*: Insufficient current margin for a 2A stall.
-- We will proceed with the BTS7960 for availability and extreme safety margins.
+> [!WARNING]
+> **UART Correction**: The NUCLEO-G431RB routes PA2/PA3 to **LPUART1** (NOT USART2)
+> by default via solder bridges SB17/SB23. The previous architecture document was incorrect.
 
-## 5. Current Sensor
-- **Proposed Part**: **INA169 Analog Current Sensor Breakout**
-- **Key Specifications**: High-side analog current monitor, unipolar output.
-- **Selection Rationale**: Superior to the ACS712 for this application. The ACS712 is noisy and operates on 5V (resulting in a 2.5V zero-offset that wastes ADC dynamic range). The INA169 outputs a ground-referenced analog voltage directly proportional to the current, easily and safely read by the STM32's 3.3V ADC with high bandwidth and low noise.
-- **Alternative**: ACS712 5A module (acceptable, but requires low-pass filtering and careful 3.3V limit verification).
+## 3. Clock Configuration (Verified by Reference Manual RM0440)
 
-## 6. Power System & Safety
-- **Power Supply**: 12V 5A DC SMPS.
-- **Logic Power**: STM32 powered via USB (5V -> internal 3.3V LDO).
-- **Fuse**: **3A Slow-Blow** automotive blade fuse. Placed in series with the positive 12V line *before* the motor driver to protect against dead shorts.
-- **Bulk Capacitance**: 470uF to 1000uF electrolytic capacitor across the motor driver 12V input to absorb inductive flyback.
-- **Hardware E-Stop Architecture**: 
-  - A physical DPST (Double Pole Single Throw) latching mushroom button.
-  - **Pole 1 (NC)**: Placed in series with the BTS7960's logic enable lines (R_EN, L_EN). Pressing it instantly cuts hardware enable, safely coasting the motor regardless of firmware state.
-  - **Pole 2 (NO)**: Pulls an STM32 GPIO high to trigger a firmware fault state interrupt.
+| Parameter | Value | Source |
+|:---|:---|:---|
+| HSE | 24 MHz (ST-LINK MCO) | UM2505 |
+| PLL: M / N / R | 6 / 85 / 2 | Calculated |
+| SYSCLK | 170 MHz | RM0440 |
+| HCLK (AHB) | 170 MHz | Prescaler = 1 |
+| PCLK1 (APB1) | 170 MHz | Prescaler = 1 |
+| PCLK2 (APB2) | 170 MHz | Prescaler = 1 |
+| TIM1 clock | 170 MHz | APB2, prescaler=1 |
+| TIM2 clock | 170 MHz | APB1, prescaler=1 |
+| Flash latency | 4 WS | Range 1 Boost mode |
 
-## 7. Signal Integrity & Wiring
-- **Encoder**: Twisted pair for A/B signals. Keep routed away from motor power wires.
-- **PWM**: Keep logic wires short to prevent ringing.
-- **Analog Sensor**: Route away from switching nodes. Use a small hardware RC low-pass filter (e.g., 1kΩ, 10nF) at the STM32 ADC pin to reject high-frequency PWM noise.
-- **Grounding**: **Star Grounding** is mandatory. The STM32 GND, Current Sensor GND, and Motor Driver logic GND must tie to a single common point at the Driver's ground terminal to prevent motor return currents from shifting the MCU's ground reference.
+## 4. PWM Configuration
 
-## 8. Final Proposed BOM
-| Component | Exact Part/Model | Qty | Purpose | Key Spec | Approx Price (INR) | Rationale |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **MCU** | NUCLEO-G431RB | 1 | Main Controller | 170MHz, Adv Timers | ~₹2000 | Industry standard for motor control |
-| **Motor** | JGA25-370 w/ Encoder | 1 | Actuator/Plant | 12V, ~300RPM | ~₹600 | Affordable, safe benchtop profile |
-| **Driver** | BTS7960 Module | 1 | Power Stage | 43A, 3.3V logic | ~₹350 | Indestructible safety margin |
-| **Current Sensor**| INA169 Breakout | 1 | Telemetry/Safety | Analog High-Side | ~₹250 | Ground-referenced, low noise |
-| **Power Supply** | Generic 12V 5A SMPS| 1 | Motor Power | 60W | ~₹400 | Sufficient overhead |
-| **E-Stop** | Latching Mushroom | 1 | Hardware Safety | DPST (NO/NC) | ~₹150 | Hardware-level disable |
-| **Fuse** | 3A Slow-Blow | 1 | Overcurrent Protection | 3A | ~₹20 | Protects against dead shorts |
+| Parameter | Value |
+|:---|:---|
+| Timer | TIM1 (Advanced Motor Control) |
+| Channel | CH1 on PA8 |
+| Frequency | 20 kHz |
+| Prescaler | 0 (no division) |
+| ARR | 8499 |
+| Resolution | 8500 steps (0.012% per step) |
+| Initial duty | 0% |
+| MOE | Disabled at startup |
 
-## 9. Hardware Decisions Pending Physical Verification
-*Do not write firmware based on assumptions. Verify these experimentally once hardware arrives:*
-1. **Encoder Resolution**: Must manually rotate the shaft 10 times and count edges in firmware to determine the exact `Counts/Revolution`.
-2. **Encoder Electricals**: Must verify if the encoder requires external pull-up resistors (open-drain) or if STM32 internal pull-ups suffice.
-3. **Current Sensor Scaling**: Must verify the exact $V_{out} / Amp$ scaling of the INA169 breakout board, as the onboard sense resistor value varies by generic vendor.
-4. **Motor Polarity**: Verify PWM duty-cycle direction matches encoder count direction (positive duty = positive count).
+## 5. Encoder Configuration
+
+| Parameter | Value |
+|:---|:---|
+| Timer | TIM2 (32-bit) |
+| Mode | Hardware Encoder (TIM_ENCODERMODE_TI12 = x4) |
+| Counter width | 32-bit (0 to 0xFFFFFFFF) |
+| Input filter | 0x0F (digital noise rejection) |
+| Pull-ups | Internal pull-up enabled |
+| Counts/rev | **PROVISIONAL: 1496** (must verify experimentally) |
+
+## 6. ADC Configuration
+
+| Parameter | Value |
+|:---|:---|
+| ADC | ADC2 (NOT ADC1) |
+| Channel | IN17 on PA4 |
+| Resolution | 12-bit (4096 counts) |
+| Vref | 3.3V |
+| Trigger | Software (initially) |
+| Sample time | 47.5 cycles |
+| Calibration | HAL auto-calibration at init |
+
+## 7. UART Configuration
+
+| Parameter | Value |
+|:---|:---|
+| Peripheral | LPUART1 |
+| Baud rate | 115200 |
+| Routing | PA2/PA3 via ST-LINK VCP (SB17/SB23 ON) |
+
+## 8. Watchdog Configuration
+
+| Parameter | Value |
+|:---|:---|
+| Type | Independent Watchdog (IWDG) |
+| LSI clock | ~32 kHz |
+| Prescaler | 64 |
+| Reload | 500 |
+| Timeout | ~1.0 second |
+| Health check | Dual: control loop AND main loop must both execute |
+
+## 9. Safety Mechanisms
+
+- **Fuse**: 3A slow-blow inline (12V rail before driver)
+- **E-Stop**: DPST — hardware path cuts R_EN/L_EN; firmware path triggers EXTI
+- **Safe Startup**: PWM = 0%, MOE disabled, driver enables LOW
+- **Safe Shutdown**: Any fault → FaultManager latches → SafetyLayer forces 0 → MotorDriver disabled
+
+## 10. Hardware Decisions Pending Physical Verification
+
+| Item | Status | Required Action |
+|:---|:---|:---|
+| Encoder PPR | **ASSUMED (11 PPR * 34:1 * 4x = 1496)** | Manually rotate and count edges |
+| Encoder pull-ups | **ASSUMED (internal pull-up sufficient)** | Test with oscilloscope |
+| INA169 V/A scaling | **ASSUMED (0.5 V/A)** | Calibrate with multimeter |
+| INA169 zero offset | **ASSUMED (0.0V)** | Measure at zero current |
+| BTS7960 IS pins | **UNVERIFIED** | Test if status pins provide usable fault signal |
+| Motor stall current | **ASSUMED (~2A)** | Measure with bench supply |
+| LPUART1 AF number | **VERIFIED (AF12)** | Confirm on-board at first flash |
